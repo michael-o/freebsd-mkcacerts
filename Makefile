@@ -4,7 +4,7 @@
 
 PROG=		mkcacerts
 SRCS=		main.c mkcacerts.c
-MAN=		# TODO: mkcacerts.8 not written yet
+MAN=		mkcacerts.8
 BINDIR?=	${PREFIX}/sbin
 
 LDADD=		-lssl -lcrypto
