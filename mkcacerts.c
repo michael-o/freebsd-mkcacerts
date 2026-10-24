@@ -59,6 +59,7 @@
 #include <openssl/pem.h>
 #include <openssl/pkcs12.h>
 #include <openssl/err.h>
+#include <openssl/x509.h>
 
 #include "mkcacerts.h"
 
@@ -77,7 +78,10 @@ const char *mkcacerts_progname = "mkcacerts";
 
 struct cert_entry {
 	X509	*x509;
-	char	*name;		/* e.g. "deadbeef.0", used as friendlyName */
+	char	*name;		/* certctl(8) hashed file name, e.g.
+				 * "deadbeef.0"; used as-is as the PKCS#12
+				 * friendlyName, or replaced with a derived
+				 * one under -F (see assign_friendly_names) */
 };
 
 static void
@@ -335,6 +339,110 @@ scan_trusted_dir(const struct mkcacerts_opts *opts, const char *trusted_path,
 	return (entries);
 }
 
+/*
+ * Extracts the first NID attribute value from name, if any, transcoded
+ * to UTF-8 regardless of its underlying ASN.1 string type. Returns
+ * NULL (not an error) if name has no such attribute.
+ */
+static char *
+extract_name_attr(X509_NAME *name, int nid)
+{
+	int idx;
+	X509_NAME_ENTRY *entry;
+	ASN1_STRING *data;
+	unsigned char *utf8 = NULL;
+	char *r;
+	int len;
+
+	idx = X509_NAME_get_index_by_NID(name, nid, -1);
+	if (idx < 0)
+		return (NULL);
+	entry = X509_NAME_get_entry(name, idx);
+	data = X509_NAME_ENTRY_get_data(entry);
+
+	len = ASN1_STRING_to_UTF8(&utf8, data);
+	if (len < 0)
+		return (NULL);
+	r = xasprintf("%.*s", len, (const char *)utf8);
+	OPENSSL_free(utf8);
+	return (r);
+}
+
+/*
+ * Trims leading/trailing whitespace in place. The value is otherwise
+ * used verbatim, in whatever case the certificate's subject stores it
+ * -- OpenSSL has no Unicode-aware case folding, and byte-wise
+ * lowercasing would corrupt any multi-byte UTF-8 character.
+ */
+static void
+trim(char *s)
+{
+	size_t start, end;
+
+	for (start = 0; isspace((unsigned char)s[start]); start++)
+		continue;
+	end = strlen(s);
+	while (end > start && isspace((unsigned char)s[end - 1]))
+		end--;
+
+	size_t len = end - start;
+	memmove(s, s + start, len);
+	s[len] = '\0';
+}
+
+/*
+ * Derives a human-readable friendlyName for cert: "<CN> (<hashed_name>)",
+ * or "<OU> (<hashed_name>)" if there is no CN, or just <hashed_name>
+ * verbatim if there is neither, or if the CN/OU found is empty or
+ * entirely whitespace. hashed_name is the certctl(8)-assigned
+ * <hash>.<N> file name this entry was found under, which is always
+ * unique by construction, so appending it guarantees the result is
+ * unique too -- without that, two certificates could derive the same
+ * human-readable name and silently collide. It also means a
+ * friendlyName can always be mapped back to the certctl(8) file it
+ * came from.
+ */
+static char *
+build_friendly_name(X509 *cert, const char *hashed_name)
+{
+	X509_NAME *subject = X509_get_subject_name(cert);
+	char *base, *name;
+
+	base = extract_name_attr(subject, NID_commonName);
+	if (base == NULL)
+		base = extract_name_attr(subject, NID_organizationalUnitName);
+	if (base == NULL)
+		return (xstrdup(hashed_name));
+
+	trim(base);
+	if (base[0] == '\0') {
+		free(base);
+		return (xstrdup(hashed_name));
+	}
+	name = xasprintf("%s (%s)", base, hashed_name);
+	free(base);
+	return (name);
+}
+
+/*
+ * Replaces each entry's name with a friendlyName derived from its
+ * certificate's subject (see build_friendly_name()).
+ */
+static void
+assign_friendly_names(const struct mkcacerts_opts *opts,
+    struct cert_entry *entries, size_t n)
+{
+	for (size_t i = 0; i < n; i++) {
+		char *friendly = build_friendly_name(entries[i].x509,
+		    entries[i].name);
+
+		free(entries[i].name);
+		entries[i].name = friendly;
+
+		mc_verbose(opts, "friendly name: %s", entries[i].name);
+	}
+}
+
 #if OPENSSL_VERSION_PREREQ(3, 2)
 
 static int
@@ -583,6 +691,9 @@ mkcacerts_run(const struct mkcacerts_opts *opts)
 
 	entries = scan_trusted_dir(opts, trusted_path, &n);
 	mc_verbose(opts, "%zu certificate(s) found", n);
+
+	if (opts->friendly_names)
+		assign_friendly_names(opts, entries, n);
 
 	p12 = build_pkcs12(entries, n);
 	write_pkcs12_atomic(opts, p12, out_path);

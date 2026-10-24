@@ -36,7 +36,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-nv] [-D destdir] [-d distbase] [-L localbase]\n"
+	    "usage: %s [-Fnv] [-D destdir] [-d distbase] [-L localbase]\n"
 	    "       %s --version\n",
 	    mkcacerts_progname, mkcacerts_progname);
 	exit(1);
@@ -55,8 +55,15 @@ main(int argc, char **argv)
 	opts.localbase = NULL;
 	opts.dryrun = 0;
 	opts.verbose = 0;
+	opts.friendly_names = 0;
 
-	/* --version always wins, regardless of what else is given. */
+	/*
+	 * getopt(3) has no portable notion of long options, and --version
+	 * must be recognized regardless of where it appears or what else
+	 * is given. Scan for it by hand before getopt(3) ever runs, so
+	 * neither its position nor its presence alongside short options
+	 * matters.
+	 */
 	for (int i = 1; i < argc; i++) {
 		if (strcmp(argv[i], "--version") == 0) {
 			printf("%s %s\n", mkcacerts_progname,
@@ -65,13 +72,16 @@ main(int argc, char **argv)
 		}
 	}
 
-	while ((ch = getopt(argc, argv, "D:d:L:nv")) != -1) {
+	while ((ch = getopt(argc, argv, "D:d:FL:nv")) != -1) {
 		switch (ch) {
 		case 'D':
 			opts.destdir = optarg;
 			break;
 		case 'd':
 			opts.distbase = optarg;
+			break;
+		case 'F':
+			opts.friendly_names = 1;
 			break;
 		case 'L':
 			opts.localbase = optarg;
