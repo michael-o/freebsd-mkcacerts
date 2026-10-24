@@ -1,0 +1,8 @@
+# bsd.prog.mk build artifacts
+mkcacerts
+mkcacerts.full
+mkcacerts.debug
+mkcacerts.8.gz
+*.pieo
+.depend
+.depend.*
