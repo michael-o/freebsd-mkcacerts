@@ -79,9 +79,9 @@ const char *mkcacerts_progname = "mkcacerts";
 struct cert_entry {
 	X509	*x509;
 	char	*name;		/* certctl(8) hashed file name, e.g.
-				 * "deadbeef.0"; used as-is as the PKCS#12
-				 * friendlyName, or replaced with a derived
-				 * one under -F (see assign_friendly_names) */
+				 * "deadbeef.0" -- initially; replaced with a
+				 * derived PKCS#12 friendlyName before output
+				 * (see assign_friendly_names) */
 };
 
 static void
@@ -216,7 +216,8 @@ resolve_output_path(const char *destdir, const char *localbase)
  * filename convention: 8 lowercase hex digits, '.', then one or more
  * decimal digits (e.g. "deadbeef.0"). We never recompute the subject
  * hash ourselves -- the filename certctl already assigned is reused
- * verbatim as the PKCS#12 friendlyName.
+ * verbatim, or as part of a derived name, as the PKCS#12 friendlyName
+ * (see build_friendly_name()).
  */
 static int
 is_hashed_name(const char *name)
@@ -692,8 +693,7 @@ mkcacerts_run(const struct mkcacerts_opts *opts)
 	entries = scan_trusted_dir(opts, trusted_path, &n);
 	mc_verbose(opts, "%zu certificate(s) found", n);
 
-	if (opts->friendly_names)
-		assign_friendly_names(opts, entries, n);
+	assign_friendly_names(opts, entries, n);
 
 	p12 = build_pkcs12(entries, n);
 	write_pkcs12_atomic(opts, p12, out_path);

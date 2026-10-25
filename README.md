@@ -7,7 +7,12 @@ certificate store — no JVM or `keytool` required.
 `mkcacerts` reads the hashed certificate directory `certctl(8)`
 already maintains (`/etc/ssl/certs` by default) and writes a
 password-less PKCS#12 file that a JVM can use directly as its default
-truststore via `-Djavax.net.ssl.trustStore`.
+truststore via `-Djavax.net.ssl.trustStore`. Each certificate's
+PKCS#12 `friendlyName` is derived from its subject, with the
+`certctl(8)` hashed file name always appended (e.g.
+`Example CA (deadbeef.0)`) to guarantee uniqueness and let the name
+be traced back to its file — purely cosmetic, with no effect on
+trust decisions.
 
 ## Why
 
@@ -39,11 +44,6 @@ make
 ```sh
 mkcacerts -v
 ```
-
-Pass `-F` to derive a human-readable PKCS#12 `friendlyName` (e.g.
-`Example CA (deadbeef.0)`) for each certificate instead of the bare
-`certctl(8)` hashed file name; purely cosmetic, with no effect on
-trust decisions.
 
 See [`mkcacerts(8)`](mkcacerts.8) for the full option and environment
 variable reference.

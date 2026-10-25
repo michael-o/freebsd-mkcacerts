@@ -38,7 +38,6 @@ struct mkcacerts_opts {
 	const char	*localbase;	/* -L, NULL if unset */
 	int		 dryrun;	/* -n */
 	int		 verbose;	/* -v */
-	int		 friendly_names; /* -F */
 };
 
 /*

@@ -36,7 +36,7 @@ static void
 usage(void)
 {
 	fprintf(stderr,
-	    "usage: %s [-Fnv] [-D destdir] [-d distbase] [-L localbase]\n"
+	    "usage: %s [-nv] [-D destdir] [-d distbase] [-L localbase]\n"
 	    "       %s --version\n",
 	    mkcacerts_progname, mkcacerts_progname);
 	exit(1);
@@ -55,7 +55,6 @@ main(int argc, char **argv)
 	opts.localbase = NULL;
 	opts.dryrun = 0;
 	opts.verbose = 0;
-	opts.friendly_names = 0;
 
 	/*
 	 * getopt(3) has no portable notion of long options, and --version
@@ -72,16 +71,13 @@ main(int argc, char **argv)
 		}
 	}
 
-	while ((ch = getopt(argc, argv, "D:d:FL:nv")) != -1) {
+	while ((ch = getopt(argc, argv, "D:d:L:nv")) != -1) {
 		switch (ch) {
 		case 'D':
 			opts.destdir = optarg;
 			break;
 		case 'd':
 			opts.distbase = optarg;
-			break;
-		case 'F':
-			opts.friendly_names = 1;
 			break;
 		case 'L':
 			opts.localbase = optarg;

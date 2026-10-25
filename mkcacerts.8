@@ -32,7 +32,7 @@
 .Nd "generate a Java PKCS#12 truststore from the trusted certificate store"
 .Sh SYNOPSIS
 .Nm
-.Op Fl Fnv
+.Op Fl nv
 .Op Fl D Ar destdir
 .Op Fl d Ar distbase
 .Op Fl L Ar localbase
@@ -75,12 +75,7 @@ reads every certificate in
 .Ev TRUSTDESTDIR
 and writes a PKCS#12 file to
 .Pa ${DESTDIR}${LOCALBASE}/etc/ssl/cacerts
-containing the same certificates, each with its
-.Xr certctl 8
-hashed file name
-.Pq Pa <hash>.<N>
-reused verbatim as its PKCS#12
-.Ic friendlyName .
+containing the same certificates.
 No new subject hash is computed and no certificate is excluded,
 renamed, or re-validated;
 .Nm
@@ -88,16 +83,9 @@ trusts
 .Xr certctl 8
 to have already performed that work.
 .Pp
-The following options are available:
-.Bl -tag -width 4n
-.It Fl D Ar destdir
-Specify the DESTDIR (overriding values from the environment).
-.It Fl d Ar distbase
-Specify the DISTBASE (overriding values from the environment).
-.It Fl F
-Derive each certificate's PKCS#12
+Each certificate's PKCS#12
 .Ic friendlyName
-from its subject, appending the
+is derived from its subject, appending the
 .Xr certctl 8
 .Pa <hash>.<N>
 file name in parentheses
@@ -108,6 +96,13 @@ its file; falls back to
 alone where no name can be derived from the subject.
 This is purely cosmetic and has no effect on the truststore's
 trust decisions.
+.Pp
+The following options are available:
+.Bl -tag -width 4n
+.It Fl D Ar destdir
+Specify the DESTDIR (overriding values from the environment).
+.It Fl d Ar distbase
+Specify the DISTBASE (overriding values from the environment).
 .It Fl L Ar localbase
 Specify the LOCALBASE (overriding values from the environment).
 .It Fl n
