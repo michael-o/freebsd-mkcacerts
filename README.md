@@ -33,7 +33,13 @@ see [`mkcacerts(8)`](mkcacerts.8) for details.
   supported)
 - `bmake` / `bsd.prog.mk`
 
-## Build
+## Install
+
+```sh
+pkg install mkcacerts
+```
+
+Or build from source:
 
 ```sh
 make
@@ -53,7 +59,11 @@ variable reference.
 Functional and tested against real `certctl(8)` output on FreeBSD
 14.5/OpenSSL 3.0 and FreeBSD 16-CURRENT/OpenSSL 3.5, including
 cross-platform verification against a non-FreeBSD, non-OpenJDK JVM.
-A FreeBSD port is drafted but not yet published or test-built.
+A FreeBSD port, `security/mkcacerts`, is upstream and installable via
+`pkg install mkcacerts`; installing it and setting the target
+`java/openjdkN` port's `OPENJDK_SYMLINK_CACERTS` variable has been
+verified end-to-end on real hardware (OpenJDK 8 and 17), with no
+`-Djavax.net.ssl.trustStore` system property required at all.
 Folding this functionality directly into `certctl(8)` is planned but
 not yet done.
 
