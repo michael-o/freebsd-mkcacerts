@@ -28,7 +28,7 @@
 #ifndef MKCACERTS_H
 #define MKCACERTS_H
 
-#define MKCACERTS_VERSION "0.1.1"
+#define MKCACERTS_VERSION "0.2.0"
 
 extern const char *mkcacerts_progname;
 
