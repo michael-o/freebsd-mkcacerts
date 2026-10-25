@@ -140,9 +140,36 @@ xasprintf(const char *fmt, ...)
 }
 
 /*
+ * Removes duplicate and trailing slashes from a path. Verbatim port of
+ * certctl(8)'s own normalize_path(), so that e.g. DESTDIR=/tmp/install/
+ * and DESTDIR=/tmp/install produce identical output paths in both
+ * tools.
+ */
+static char *
+normalize_path(const char *str)
+{
+	char *buf, *dst;
+
+	buf = malloc(strlen(str) + 1);
+	if (buf == NULL)
+		err(1, "malloc");
+	for (dst = buf; *str != '\0'; dst++) {
+		if ((*dst = *str++) == '/') {
+			while (*str == '/')
+				str++;
+			if (*str == '\0')
+				break;
+		}
+	}
+	*dst = '\0';
+	return (buf);
+}
+
+/*
  * Mirrors certctl(8)'s own destdir/distbase/localbase resolution
  * (set_defaults() in certctl.c): CLI flag wins, then the matching
- * environment variable, then a fallback.
+ * environment variable, then a fallback; destdir and distbase are
+ * then normalized the same way certctl(8) does.
  */
 static char *
 resolve_destdir(const struct mkcacerts_opts *opts)
@@ -150,9 +177,9 @@ resolve_destdir(const struct mkcacerts_opts *opts)
 	const char *v;
 
 	if (opts->destdir != NULL)
-		return (xstrdup(opts->destdir));
+		return (normalize_path(opts->destdir));
 	if ((v = getenv("DESTDIR")) != NULL)
-		return (xstrdup(v));
+		return (normalize_path(v));
 	return (xstrdup(""));
 }
 
@@ -162,10 +189,13 @@ resolve_distbase(const struct mkcacerts_opts *opts)
 	const char *v;
 
 	if (opts->distbase != NULL)
-		return (xstrdup(opts->distbase));
-	if ((v = getenv("DISTBASE")) != NULL)
-		return (xstrdup(v));
-	return (xstrdup(""));
+		v = opts->distbase;
+	else if ((v = getenv("DISTBASE")) == NULL)
+		return (xstrdup(""));
+
+	if (*v != '\0' && *v != '/')
+		errx(1, "DISTBASE=%s does not begin with a slash", v);
+	return (normalize_path(v));
 }
 
 static char *
@@ -198,9 +228,9 @@ resolve_trusted_path(const char *destdir, const char *distbase)
 	const char *v;
 
 	if ((v = getenv("TRUSTDESTDIR")) != NULL)
-		return (xstrdup(v));
+		return (normalize_path(v));
 	if ((v = getenv("CERTDESTDIR")) != NULL)
-		return (xstrdup(v));
+		return (normalize_path(v));
 	return (xasprintf("%s%s%s", destdir, distbase, TRUSTED_PATH));
 }
 
